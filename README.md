@@ -16,6 +16,12 @@ to detect whether it was a manual or rtcwake , to run a repeated check when syst
 ### Potential clues
 
 rtcwake command can do a s3 or s4 state with a RTC clock which runs in both modes and can trigger a wake
+currently systemd commands are used and are in thought to be changed
+
+## Usage
+copy the main script and s3 wrapper to the location specified on the systemd service file (current timer methodology)
+install the timer and the service file and run them as systemd root 
+the intervals can be tuned which works best for you
 
 #### additional
 

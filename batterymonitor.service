@@ -1,0 +1,13 @@
+[Unit]
+Description=Battery Monitor Trigger
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/yadbattery
+TimeoutSec=60
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=multi-user.target
