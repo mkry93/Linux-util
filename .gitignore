@@ -1,3 +1,4 @@
 #not inlcuding some other iterations for now
 *.sh
-iters
+#iterations folder
+#iters

@@ -16,7 +16,7 @@ done
 
 [ -z "$BATTERY_PATH" ] && exit 1
 
-#values
+#set values
 
         percent=$(get_battery_percent)
         if [[ -z "$percent" ]] || ! [[ "$percent" =~ ^[0-9]+$ ]]; then
@@ -80,7 +80,10 @@ calculate_delay() {
 
 get_battery_info
 
+#rtc command as root for delayed wake-suspend cycle (incomplete ,need help)
 rtcwake -m mem -s $delay
+
+#no dialogue countdown at critical battery
 
 [ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
@@ -97,7 +100,7 @@ fi
     done
 ) | yad --progress \
     --title="Low Battery: $LEVEL%" \
-    --text="Automatic Sleep...Connect power" \
+    --text="Automatic Sleep...Connect power to terminate" \
     --timeout=10 \
     --no-cancel \
     --width=300 \
@@ -105,8 +108,14 @@ fi
     --no-buttons \
     --auto-close
 
+#check if connected else sleep
+
 get_battery_info
 if [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
+
 #systemctl suspend-then-hibernate -i
-hiber
+
+#hiber is a custom hibernate script to manage chromium hang
+#hiber
+
 fi
