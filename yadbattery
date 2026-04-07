@@ -28,6 +28,9 @@ delay=$(calculate_delay $percent)
 echo "Calculated Delay: ${delay} seconds (~$(echo "scale=1; $delay/3600" | bc) hours)"
 LOW=10
 WARN=20
+DRAIN_RATE_WATT=2.0  
+SAFETY_PERCENT=5
+TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s')
 
 #function declarations
 
@@ -82,14 +85,33 @@ calculate_delay() {
 
 get_battery_info
 
+#detect if the file is present and execute
+#this file will be created by a simple suspend wrapper which touches this in temp (need to be cleaned later)
+if [[ -f /tmp/sulockfile ]]; then
+suspend_loop_detect
+fi
 #rtc command as root for delayed wake-suspend cycle (incomplete ,need help)
-rtcwake -m mem -s $delay
-
+suspend_loop_detect(){
+#file is present
+local secnow=$(date +%s)
+local secafterdelay=$((secnow + delay))
+sudo rtcwake -m mem -s $delay
+#execution stops here and countinues after wake 
+#to determine manual or rtc wake use time based calculation
+local secafterwake=$(date +%s)
+if [ $secafterdelay -lt $secafterwake ]; then
+echo "this was automatic"
+else
+echo "this was manual"
+fi
+}
 #no dialogue countdown at critical battery
 
 [ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-hibern && exit 0
+systemctl hibernate && exit 0
+#custom hibernate script
+#hibern && exit 0
 fi
 
 # Show non-interactive progress dialog that auto-closes after 3s
@@ -115,9 +137,8 @@ fi
 get_battery_info
 if [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
 
-#systemctl suspend-then-hibernate -i
-
-#hiber is a custom hibernate script to manage chromium hang
+systemctl suspend-then-hibernate -i
+#hiber is a custom hybrid-sleep script to manage chromium hang
 #hiber
 
 fi
