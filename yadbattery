@@ -154,7 +154,13 @@ percent=$(get_battery_percent)
             echo "Error: Could not read battery percentage."
             exit 1
     fi    
+
 delay=$(calculate_delay $percent)
+
+#for testing
+#delay=10
+
+
 #echo "Calculated Delay: ${delay} seconds (~$(echo "scale=1; $delay/3600" | bc) hours)"
 #configurable (Would be good if dynamically detected once)
 #------------
