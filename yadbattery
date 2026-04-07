@@ -1,0 +1,112 @@
+#!/bin/sh
+
+#for getting the magic-cookie to display the yad dialogue //sorted according to current graphical user
+for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
+    cp "/home/$user/.Xauthority" /root/.Xauthority.tmp 2>/dev/null && {
+        export XAUTHORITY=/root/.Xauthority.tmp
+        break
+    }
+done
+
+#find the battery using sysfs or error out
+
+for B in /sys/class/power_supply/BAT?; do
+    [ -d "$B" ] && BATTERY_PATH="$B" && break
+done
+
+[ -z "$BATTERY_PATH" ] && exit 1
+
+#values
+
+        percent=$(get_battery_percent)
+        if [[ -z "$percent" ]] || ! [[ "$percent" =~ ^[0-9]+$ ]]; then
+            echo "Error: Could not read battery percentage."
+            exit 1
+        fi
+
+delay=$(calculate_delay $percent)
+echo "Calculated Delay: ${delay} seconds (~$(echo "scale=1; $delay/3600" | bc) hours)"
+LOW=10
+WARN=20
+
+#function declarations
+
+get_battery_percent() {
+    local capacity_file="$BATTERY_PATH/capacity"
+    if [[ -f "$capacity_file" ]]; then
+        cat "$capacity_file"
+    else
+        # Fallback calculation
+        local energy_now=$(cat "$BATTERY_PATH/charge_now" 2>/dev/null || echo 0)
+        local energy_full=$(cat "$BATTERY_PATH/charge_full_design" 2>/dev/null || echo 0)
+        if [[ $energy_full -gt 0 ]]; then
+            echo $(( energy_now * 100 / energy_full ))
+        else
+            echo 0
+        fi
+    fi
+}
+
+get_battery_info() {
+    LEVEL=$(cat "$BATTERY_PATH/capacity")
+    STATUS=$(cat "$BATTERY_PATH/status")
+}
+
+calculate_delay() {
+    local percent=$1
+    # Calculate available Wh after safety buffer
+    local available_wh=$(echo "scale=2; ($percent - $SAFETY_PERCENT) * $TOTAL_CAPACITY_WH / 100" | bc)
+   
+    # Force immediate hibernate if below safety threshold
+    if (( $(echo "$available_wh <= 0" | bc -l) )); then
+        echo 0
+        return
+    fi
+
+    # Calculate hours then seconds
+    local hours=$(echo "scale=2; $available_wh / $DRAIN_RATE_WATT" | bc)
+    local seconds=$(echo "$hours * 3600" | bc | cut -d'.' -f1)
+    
+    # Add 10% buffer
+    local final_seconds=$(echo "$seconds * 1.1" | bc | cut -d'.' -f1)
+    
+    # Minimum 60s cap
+    if [[ $final_seconds -lt 60 ]]; then
+        final_seconds=60
+    fi
+    
+    echo $final_seconds
+}
+
+get_battery_info
+
+rtcwake -m mem -s $delay
+
+[ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0
+if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
+hibern && exit 0
+fi
+
+# Show non-interactive progress dialog that auto-closes after 3s
+(
+    for i in $(seq 10 -1 1); do
+        percent=$(( (10-i)*100/10 ))
+        echo "$percent"
+        echo "# Sleeping in $i seconds (Battery: $LEVEL%)"
+        sleep 1
+    done
+) | yad --progress \
+    --title="Low Battery: $LEVEL%" \
+    --text="Automatic Sleep...Connect power" \
+    --timeout=10 \
+    --no-cancel \
+    --width=300 \
+    --undecorated \
+    --no-buttons \
+    --auto-close
+
+get_battery_info
+if [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
+#systemctl suspend-then-hibernate -i
+hiber
+fi
