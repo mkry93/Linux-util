@@ -101,6 +101,12 @@ local secafterwake=$(date +%s)
 #this is actually proving to be a good solution despite being time based when scaled to the long delay seconds and we will set the fallback atleast 60 sec
 if [ $secafterdelay -lt $secafterwake ]; then
 echo "RTC wake"
+
+#-----------
+#for overnight logging
+echo $delay
+#--------
+
 s3_detect
 else
 #remove sudo here too
