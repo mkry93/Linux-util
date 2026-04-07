@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #find the battery using sysfs or error out
 #may fail for multi-battery (please help in testing and reporting) or if your system labels power supply as BAT (unlikely)
@@ -8,6 +8,10 @@ done
 #exit if not found (need to add a error message)
 [ -z "$BATTERY_PATH" ] && echo "didnt find Battery path" && exit 1
 
+# Check dependencies
+command -v bc >/dev/null 2>&1 || { echo "bc is required"; exit 1; }
+command -v yad >/dev/null 2>&1 || { echo "yad is required"; exit 1; }
+command -v upower >/dev/null 2>&1 || { echo "upower is required"; exit 1; }
 
 #get display authorisation
 #getting the magic-cookie to display the yad dialogue //sorted according to current graphical user
@@ -18,15 +22,8 @@ for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
     }
 done
 
-#set/get values
-percent=$(get_battery_percent)
-	if [[ -z "$percent" ]] || ! [[ "$percent" =~ ^[0-9]+$ ]]; then
-            echo "Error: Could not read battery percentage."
-            exit 1
-    fi    
-delay=$(calculate_delay $percent)
-#echo "Calculated Delay: ${delay} seconds (~$(echo "scale=1; $delay/3600" | bc) hours)"
-#configurable (Would be good if dynamically detected once)
+#set values
+
 LOW=10
 WARN=20
 
@@ -35,8 +32,9 @@ SAFETY_PERCENT=5
 #need a no dependency way to get value in Wh
 TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s')
 
-# ----------------
 
+
+# ----------------
 #function declarations
 
 get_battery_percent() {
@@ -149,6 +147,17 @@ systemctl hibernate -i
 fi
 }
 
+
+#get values
+percent=$(get_battery_percent)
+	if [[ -z "$percent" ]] || ! [[ "$percent" =~ ^[0-9]+$ ]]; then
+            echo "Error: Could not read battery percentage."
+            exit 1
+    fi    
+delay=$(calculate_delay $percent)
+#echo "Calculated Delay: ${delay} seconds (~$(echo "scale=1; $delay/3600" | bc) hours)"
+#configurable (Would be good if dynamically detected once)
+#------------
 
 #logic start
 
