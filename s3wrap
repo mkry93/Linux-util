@@ -1,10 +1,10 @@
 #!/bin/sh
 
 #suspend command wrapper 
-touch > /tmp/sulockfile
+touch /tmp/sulockfile
 #we will do an initial rtc suspend for a safe time then make the timer job takeover
 #safe time beacause entering suspend may/can take some time 
-rtcwake -m mem -s 60
+rtcwake -m mem -s 5
 
 #also need to clean the temporary file (help needed here to avoid unexpected suspend loops)
 #dont add it here as after the 60 sec wake itll be cleared 
