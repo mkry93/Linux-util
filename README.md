@@ -17,5 +17,7 @@ to detect whether it was a manual or rtcwake , to run a repeated check when syst
 
 rtcwake command can do a s3 or s4 state with a RTC clock which runs in both modes and can trigger a wake
 
+#### additional
 
-
+Prefer low latency coreutils , reduce additional dependencies (yet optionally use common installed utils if needed) ,
+avoid polling with very small intervals to avoid overhead or countinuos looping , avoid race conditions when tampering system files 

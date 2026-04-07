@@ -9,7 +9,7 @@ for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
 done
 
 #find the battery using sysfs or error out
-
+#may fail for multi-battery (exist?) or if your system labels power supply as BAT (unlikely)
 for B in /sys/class/power_supply/BAT?; do
     [ -d "$B" ] && BATTERY_PATH="$B" && break
 done
@@ -46,6 +46,8 @@ get_battery_percent() {
         fi
     fi
 }
+
+#Repeated function to refactor
 
 get_battery_info() {
     LEVEL=$(cat "$BATTERY_PATH/capacity")
