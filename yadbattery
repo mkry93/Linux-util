@@ -15,6 +15,8 @@ command -v upower >/dev/null 2>&1 || { echo "upower is required"; exit 1; }
 
 #get display authorisation
 #getting the magic-cookie to display the yad dialogue //sorted according to current graphical user
+#have noticed missing dialogues in multi-user need cause and fix
+
 for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
     cp "/home/$user/.Xauthority" /root/.Xauthority.tmp 2>/dev/null && {
         export XAUTHORITY=/root/.Xauthority.tmp
@@ -29,7 +31,8 @@ WARN=20
 
 DRAIN_RATE_WATT=2.0  
 SAFETY_PERCENT=5
-#need a no dependency way to get value in Wh
+
+#need a no dependency way to get value in Wh (critical...!)
 TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s')
 
 
@@ -37,6 +40,8 @@ TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | gre
 # ----------------
 #function declarations
 
+#fallback percent calculation currently unused
+#_________________________
 get_battery_percent() {
     local capacity_file="$BATTERY_PATH/capacity"
     if [[ -f "$capacity_file" ]]; then
@@ -56,8 +61,9 @@ get_battery_percent() {
         fi
     fi
 }
+#_________________________________
 
-#Repeated function to refactor
+
 #-----------------
 get_battery_info() {
     LEVEL=$(cat "$BATTERY_PATH/capacity")
@@ -127,7 +133,7 @@ battery_action(){
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
 systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0
 #custom hibernate script
-#hibern && exit 0
+#hibern && rm -f /tmp/sulockfile && exit 0
 fi
 # Show non-interactive progress dialog that auto-closes after seconds
 (
@@ -163,9 +169,10 @@ rm -f /tmp/sulockfile
 fi
 }
 
+get_battery_info
 
 #get values
-percent=$(get_battery_percent)
+percent=$LEVEL
 	if [[ -z "$percent" ]] || ! [[ "$percent" =~ ^[0-9]+$ ]]; then
             echo "Error: Could not read battery percentage."
             exit 1
