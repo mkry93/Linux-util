@@ -155,6 +155,9 @@ if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
 #systemctl suspend-then-hibernate -i
 #rationale:if the person was present at that level then he should have connected the charger hybrid sleep causes unnecessary battery drain
 systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0
+else
+#charger connected so remove loopterigger
+rm -f /tmp/sulockfile
 #hiber is a custom hybrid-sleep script to manage chromium hang
 #hiber
 fi
