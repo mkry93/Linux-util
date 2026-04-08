@@ -21,3 +21,6 @@ rtcwake command can do a s3 or s4 state with a RTC clock which runs in both mode
 
 Prefer low latency coreutils , reduce additional dependencies (yet optionally use common installed utils if needed) ,
 avoid polling with very small intervals to avoid overhead or countinuos looping , avoid race conditions when tampering system files 
+
+
+## NOTE: All branches right now are not production ready as now..!
