@@ -1,6 +1,20 @@
-#!/bin/sh
+#!/bin/bash
 
-#for getting the magic-cookie to display the yad dialogue //sorted according to current graphical user
+#find the battery using sysfs or error out
+#may fail for multi-battery (please help in testing and reporting) or if your system labels power supply as BAT (unlikely)
+for B in /sys/class/power_supply/BAT?; do
+    [ -d "$B" ] && BATTERY_PATH="$B" && break
+done
+[ -z "$BATTERY_PATH" ] && echo "didnt find Battery path" && exit 1   #exit if not found (need to add a error message)
+
+# Check dependencies
+command -v bc >/dev/null 2>&1 || { echo "bc is required"; exit 1; }
+command -v yad >/dev/null 2>&1 || { echo "yad is required"; exit 1; }
+command -v upower >/dev/null 2>&1 || { echo "upower is required"; exit 1; }
+
+
+#getting the xauth  magic-cookie to display the yad dialogue //sorted according to current graphical user
+#have noticed missing dialogues in multi-user need cause and fix
 for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
     cp "/home/$user/.Xauthority" /root/.Xauthority.tmp 2>/dev/null && {
         export XAUTHORITY=/root/.Xauthority.tmp
@@ -8,91 +22,32 @@ for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
     }
 done
 
-#find the battery using sysfs or error out
-#may fail for multi-battery (exist?) or if your system labels power supply as BAT (unlikely)
-for B in /sys/class/power_supply/BAT?; do
-    [ -d "$B" ] && BATTERY_PATH="$B" && break
-done
-
-[ -z "$BATTERY_PATH" ] && exit 1
 
 #set values
-
-        percent=$(get_battery_percent)
-        if [[ -z "$percent" ]] || ! [[ "$percent" =~ ^[0-9]+$ ]]; then
-            echo "Error: Could not read battery percentage."
-            exit 1
-        fi
-
-delay=$(calculate_delay $percent)
-echo "Calculated Delay: ${delay} seconds (~$(echo "scale=1; $delay/3600" | bc) hours)"
 LOW=10
 WARN=20
 
+DRAIN_RATE_WATT=2.5  
+SAFETY_PERCENT=5
+
+TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s') #need no dependency way to get Wh (critical...!)
+
+
+
+
+# ----------------
 #function declarations
 
-get_battery_percent() {
-    local capacity_file="$BATTERY_PATH/capacity"
-    if [[ -f "$capacity_file" ]]; then
-        cat "$capacity_file"
-    else
-        # Fallback calculation
-        local energy_now=$(cat "$BATTERY_PATH/charge_now" 2>/dev/null || echo 0)
-        local energy_full=$(cat "$BATTERY_PATH/charge_full_design" 2>/dev/null || echo 0)
-        if [[ $energy_full -gt 0 ]]; then
-            echo $(( energy_now * 100 / energy_full ))
-        else
-            echo 0
-        fi
-    fi
-}
-
-#Repeated function to refactor
-
-get_battery_info() {
-    LEVEL=$(cat "$BATTERY_PATH/capacity")
-    STATUS=$(cat "$BATTERY_PATH/status")
-}
-
-calculate_delay() {
-    local percent=$1
-    # Calculate available Wh after safety buffer
-    local available_wh=$(echo "scale=2; ($percent - $SAFETY_PERCENT) * $TOTAL_CAPACITY_WH / 100" | bc)
-   
-    # Force immediate hibernate if below safety threshold
-    if (( $(echo "$available_wh <= 0" | bc -l) )); then
-        echo 0
-        return
-    fi
-
-    # Calculate hours then seconds
-    local hours=$(echo "scale=2; $available_wh / $DRAIN_RATE_WATT" | bc)
-    local seconds=$(echo "$hours * 3600" | bc | cut -d'.' -f1)
-    
-    # Add 10% buffer
-    local final_seconds=$(echo "$seconds * 1.1" | bc | cut -d'.' -f1)
-    
-    # Minimum 60s cap
-    if [[ $final_seconds -lt 60 ]]; then
-        final_seconds=60
-    fi
-    
-    echo $final_seconds
-}
-
-get_battery_info
-
-#rtc command as root for delayed wake-suspend cycle (incomplete ,need help)
-rtcwake -m mem -s $delay
-
+battery_action(){
 #no dialogue countdown at critical battery
-
-[ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0
+get_battery_info
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-hibern && exit 0
-fi
-
-# Show non-interactive progress dialog that auto-closes after 3s
+rm -f /tmp/sulockfile && systemctl hibernate -i
+exit 0
+#hibern && rm -f /tmp/sulockfile && exit 0  #custom hibernate script
+#fi
+elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/sulockfile ]]; then
+# Show non-interactive progress dialog that auto-closes after seconds
 (
     for i in $(seq 10 -1 1); do
         percent=$(( (10-i)*100/10 ))
@@ -110,14 +65,119 @@ fi
     --no-buttons \
     --auto-close
 
-#check if connected else sleep
-
-get_battery_info
-if [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
-
-#systemctl suspend-then-hibernate -i
-
-#hiber is a custom hibernate script to manage chromium hang
-#hiber
-
 fi
+
+get_battery_info #check if plugged-in else hibernate
+sleep 1
+
+if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
+systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate
+else
+rm -f /tmp/sulockfile #charger connected so remove looptrigger
+#hibern  #custom hibernate script to manage chromium hang
+fi
+}
+
+#old percent calculation currently unused
+#_________________________
+get_battery_percent() {
+    local capacity_file="$BATTERY_PATH/capacity"
+    if [[ -f "$capacity_file" ]]; then
+        cat "$capacity_file"
+    else
+        # Fallback calculation
+        local energy_now=$(cat "$BATTERY_PATH/charge_now" 2>/dev/null || echo 0)
+        local energy_full=$(cat "$BATTERY_PATH/charge_full_design" 2>/dev/null || echo 0)
+        if [[ $energy_full -gt 0 ]]; then
+            echo $(( energy_now * 100 / energy_full ))
+        else
+            echo 0
+        fi
+    fi
+}
+#_________________________________
+
+
+#current capacity and status logic
+#-----------------
+get_battery_info() {
+    LEVEL=$(cat "$BATTERY_PATH/capacity")
+    STATUS=$(cat "$BATTERY_PATH/status")
+}
+#-----------------
+
+calculate_delay() {
+    local percent=$1 #passed argument
+    local available_wh=$(echo "scale=2; ($percent - $SAFETY_PERCENT) * $TOTAL_CAPACITY_WH / 100" | bc) # Calculate available Wh after safety buffer
+
+    if (( $(echo "$available_wh <= 0" | bc -l) )); then       # Force immediate hibernate if below safety threshold
+        echo 0
+        return
+    fi
+
+    # Calculate hours then seconds
+    local hours=$(echo "scale=2; $available_wh / $DRAIN_RATE_WATT" | bc)
+    local seconds=$(echo "$hours * 3600" | bc | cut -d'.' -f1)
+
+    local final_seconds=$(echo "$seconds * 1" | bc | cut -d'.' -f1) #do we need a percent increase or decrease here?
+    
+    # Minimum 60s cap
+    if [[ $final_seconds -lt 60 ]]; then
+        final_seconds=60
+    fi
+    
+    echo $final_seconds
+}
+
+
+s3_detect(){
+#determine manual or rtc wake using time based calculation (better methods are welcomed)
+while [[ -f /tmp/sulockfile ]]
+do
+calculate_delay $percent >/dev/null
+local delay=$(calculate_delay $percent)
+
+[[ "$delay" -ne 0 ]] && echo "next delay ${delay} at ${percent}%"
+[[ "$delay" -eq 0 ]] && echo "low threshold no more suspend"
+
+local secnow=$(date +%s)
+local secafterdelay=$((secnow + delay))
+
+battery_action #check before resuspend //remove sudo if kept for testing ...!
+
+[[ "$delay" -ne 0 ]] && rtcwake -m mem -s $delay #execution stops here and countinues after wake in a suspend cycle
+
+local secafterwake=$(date +%s) #tested to be a good solution despite time basing when scaled to the long delay seconds (and will set the fallback atleast 60 sec)
+local tolsecafterwake=$((secafterwake + 2)) #tolerance time 
+
+if [ $secafterdelay -lt $tolsecafterwake ]; then
+[[ "$delay" -ne 0 ]] && echo "RTC wake"
+#s3_detect #recurse till manual delay (looping is better)
+else
+echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
+exit 0 #since timer will run it again and can comfortably quit here
+fi
+done
+}
+
+
+get_battery_info #running to get percent and subsequent delay repeated with timer
+percent=$LEVEL
+	if [[ -z "$percent" ]] || ! [[ "$percent" =~ ^[0-9]+$ ]]; then
+            echo "Error: Could not read battery percentage."
+            exit 1
+    fi    
+
+#-----------
+
+
+#logic start
+#detect if the lockfile is present in a tmpfs created using a suspend wrapper and execute (need to clear lockfile later)
+#important decide the initial timer or add error handling to prevent suspend loop 
+if [[ -f /tmp/sulockfile ]]; then #potential error :if suspend was woken up before the helper wrapper completed its first wake therell be a loop (fix needed)
+s3_detect
+fi
+
+[ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0 # exit quickly if charging 
+
+battery_action #normal low battery flow

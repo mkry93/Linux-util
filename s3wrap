@@ -1,0 +1,11 @@
+#!/bin/sh
+
+#suspend command wrapper 
+touch /tmp/sulockfile
+#we will do an initial rtc suspend for a safe time then make the timer job takeover
+#safe time beacause entering suspend may/can take some time 
+rtcwake -m mem -s 15
+
+#going below 15 has caused rtc to be labelled as manual (-s 10 when tested) 
+#also need to clean the temporary file (help needed here to avoid unexpected suspend loops)(currently done by manual detection in main script)
+#dont add it here as after the 60 sec wake itll be cleared 

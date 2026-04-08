@@ -1,4 +1,4 @@
-#not inlcuding some other iterations for now
+#not inlcuding some other iterations and module testing script (check individual function one by one)
 *.sh
 #iterations folder
 #iters
