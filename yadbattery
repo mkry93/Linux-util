@@ -46,7 +46,7 @@ rm -f /tmp/sulockfile && systemctl hibernate -i
 exit 0
 #hibern && rm -f /tmp/sulockfile && exit 0  #custom hibernate script
 #fi
-elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
+elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/sulockfile ]]; then
 # Show non-interactive progress dialog that auto-closes after seconds
 (
     for i in $(seq 10 -1 1); do
@@ -136,19 +136,22 @@ while [[ -f /tmp/sulockfile ]]
 do
 calculate_delay $percent >/dev/null
 local delay=$(calculate_delay $percent)
-echo "next delay ${delay} at ${percent}%"
+
+[[ "$delay" -ne 0 ]] && echo "next delay ${delay} at ${percent}%"
+[[ "$delay" -eq 0 ]] && echo "low threshold no more suspend"
+
 local secnow=$(date +%s)
 local secafterdelay=$((secnow + delay))
 
 battery_action #check before resuspend //remove sudo if kept for testing ...!
 
-rtcwake -m mem -s $delay #execution stops here and countinues after wake 
+[[ "$delay" -ne 0 ]] && rtcwake -m mem -s $delay #execution stops here and countinues after wake in a suspend cycle
 
 local secafterwake=$(date +%s) #tested to be a good solution despite time basing when scaled to the long delay seconds (and will set the fallback atleast 60 sec)
 local tolsecafterwake=$((secafterwake + 2)) #tolerance time 
 
 if [ $secafterdelay -lt $tolsecafterwake ]; then
-echo "RTC wake"
+[[ "$delay" -ne 0 ]] && echo "RTC wake"
 #s3_detect #recurse till manual delay (looping is better)
 else
 echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
