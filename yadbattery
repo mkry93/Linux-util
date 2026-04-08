@@ -39,13 +39,14 @@ TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | gre
 #function declarations
 
 battery_action(){
-
 #no dialogue countdown at critical battery
+get_battery_info
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0
+rm -f /tmp/sulockfile && systemctl hibernate -i
+exit 0
 #hibern && rm -f /tmp/sulockfile && exit 0  #custom hibernate script
-fi
-
+#fi
+elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
 # Show non-interactive progress dialog that auto-closes after seconds
 (
     for i in $(seq 10 -1 1); do
@@ -64,7 +65,10 @@ fi
     --no-buttons \
     --auto-close
 
+fi
+
 get_battery_info #check if plugged-in else hibernate
+sleep 1
 
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
 systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate
@@ -161,21 +165,16 @@ percent=$LEVEL
             exit 1
     fi    
 
-#delay=$(calculate_delay $percent)
-
-#echo "Calculated Delay: ${delay} seconds (~$(echo "scale=1; $delay/3600" | bc) hours)"
-#configurable (Would be good if dynamically detected once)
-
-
-
 #-----------
-#logic start
 
-#detect if the lockfile is present in a tmpfs using a suspend wrapper and execute (need to clear lockfile later) 
+
+#logic start
+#detect if the lockfile is present in a tmpfs created using a suspend wrapper and execute (need to clear lockfile later)
+#important decide the initial timer or add error handling to prevent suspend loop 
 if [[ -f /tmp/sulockfile ]]; then #potential error :if suspend was woken up before the helper wrapper completed its first wake therell be a loop (fix needed)
 s3_detect
 fi
 
-[ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0 # exit if charging 
+[ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0 # exit quickly if charging 
 
 battery_action #normal low battery flow

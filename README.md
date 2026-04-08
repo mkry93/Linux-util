@@ -32,6 +32,9 @@ very short wakeup for check time can cause same delay to be reused (maybe upower
 
 Check Big(O) worst case time. should not exceed 15sec +- 2
 
+- A simulation folder has a dummy sysfs cp to /tmp or any dir, make a copy of main script, edit prefix of the sysfs detection for loop with your dir
+then echo your values to test various battery conditions
+
 ### potential bottlenecks
 ---
 1.upower query when slow (.5- 3.0 sec) advisable to switch method to pure arithmetic or faster coreutil
