@@ -86,12 +86,8 @@ get_battery_percent() {
         local energy_full=$(cat "$BATTERY_PATH/charge_full_design" 2>/dev/null || echo 0)
         if [[ $energy_full -gt 0 ]]; then
             echo $(( energy_now * 100 / energy_full ))
-#for test
-#           percent=$(( energy_now * 100 / energy_full ))
         else
             echo 0
-#for test
- #           percent=0
         fi
     fi
 }
@@ -133,23 +129,28 @@ calculate_delay() {
 
 s3_detect(){
 #determine manual or rtc wake using time based calculation (better methods are welcomed)
+while [[ -f /tmp/sulockfile ]]
+do
+calculate_delay $percent >/dev/null
+local delay=$(calculate_delay $percent)
+echo "next delay ${delay} at ${percent}%"
 local secnow=$(date +%s)
 local secafterdelay=$((secnow + delay))
 
 battery_action #check before resuspend //remove sudo if kept for testing ...!
-
 rtcwake -m mem -s $delay #execution stops here and countinues after wake 
 
 local secafterwake=$(date +%s) #tested to be a good solution despite time basing when scaled to the long delay seconds (and will set the fallback atleast 60 sec)
+local tolsecafterwake=$((secafterwake + 2)) #tolerance time 
 
-if [ $secafterdelay -lt $secafterwake ]; then
+if [ $secafterdelay -lt $tolsecafterwake ]; then
 echo "RTC wake"
-echo "next delay ${delay}"
-s3_detect #recurse till manual delay (looping is better)
+#s3_detect #recurse till manual delay (looping is better)
 else
 echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
 exit 0
 fi
+done
 }
 
 
@@ -160,7 +161,7 @@ percent=$LEVEL
             exit 1
     fi    
 
-delay=$(calculate_delay $percent)
+#delay=$(calculate_delay $percent)
 
 #echo "Calculated Delay: ${delay} seconds (~$(echo "scale=1; $delay/3600" | bc) hours)"
 #configurable (Would be good if dynamically detected once)
