@@ -27,7 +27,7 @@ done
 LOW=10
 WARN=20
 
-DRAIN_RATE_WATT=2.0  
+DRAIN_RATE_WATT=2.5  
 SAFETY_PERCENT=5
 
 TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s') #need no dependency way to get Wh (critical...!)
@@ -69,12 +69,12 @@ get_battery_info #check if plugged-in else hibernate
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
 systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate
 else
-rm -f /tmp/sulockfile #charger connected so remove loopterigger
-#hibern  #a custom hibernate script to manage chromium hang
+rm -f /tmp/sulockfile #charger connected so remove looptrigger
+#hibern  #custom hibernate script to manage chromium hang
 fi
 }
 
-#fallback percent calculation currently unused
+#old percent calculation currently unused
 #_________________________
 get_battery_percent() {
     local capacity_file="$BATTERY_PATH/capacity"
@@ -103,7 +103,7 @@ get_battery_info() {
 #-----------------
 
 calculate_delay() {
-    local percent=$1
+    local percent=$1 #passed argument
     local available_wh=$(echo "scale=2; ($percent - $SAFETY_PERCENT) * $TOTAL_CAPACITY_WH / 100" | bc) # Calculate available Wh after safety buffer
 
     if (( $(echo "$available_wh <= 0" | bc -l) )); then       # Force immediate hibernate if below safety threshold
@@ -114,9 +114,8 @@ calculate_delay() {
     # Calculate hours then seconds
     local hours=$(echo "scale=2; $available_wh / $DRAIN_RATE_WATT" | bc)
     local seconds=$(echo "$hours * 3600" | bc | cut -d'.' -f1)
-    
-    # Add 5% buffer (safety measure)
-    local final_seconds=$(echo "$seconds * 1.05" | bc | cut -d'.' -f1)
+
+    local final_seconds=$(echo "$seconds * 1" | bc | cut -d'.' -f1) #do we need a percent increase or decrease here?
     
     # Minimum 60s cap
     if [[ $final_seconds -lt 60 ]]; then
@@ -138,6 +137,7 @@ local secnow=$(date +%s)
 local secafterdelay=$((secnow + delay))
 
 battery_action #check before resuspend //remove sudo if kept for testing ...!
+
 rtcwake -m mem -s $delay #execution stops here and countinues after wake 
 
 local secafterwake=$(date +%s) #tested to be a good solution despite time basing when scaled to the long delay seconds (and will set the fallback atleast 60 sec)
@@ -148,7 +148,7 @@ echo "RTC wake"
 #s3_detect #recurse till manual delay (looping is better)
 else
 echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
-exit 0
+exit 0 #since timer will run it again and can comfortably quit here
 fi
 done
 }
