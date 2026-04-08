@@ -58,3 +58,6 @@ e.systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 here what if hibern
 4.add a recursion counter for the s3_detect call (help needed whether its necessary)
 
 5.for practical reasons is it necessary to add a max 3-4 hour check if exceeding at worst condition(100%) the delay would be ~16 hours
+
+6.CRITICAL for s3wrapper to work either run as root or temporarily escalate 
+priviledge (sudo) due to rtcwake command (help needed:potential solution is adding NOPASSWD for rtcwake in sudoers ,but not appealing security-wise )
