@@ -27,3 +27,4 @@ the intervals can be tuned which works best for you
 
 Prefer low latency coreutils , reduce additional dependencies (yet optionally use common installed utils if needed) ,
 avoid polling with very small intervals to avoid overhead or countinuos looping , avoid race conditions when tampering system files 
+very short wakeup for check time can cause same delay to be reused (maybe upower quirk )

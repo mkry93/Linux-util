@@ -47,8 +47,12 @@ get_battery_percent() {
         local energy_full=$(cat "$BATTERY_PATH/charge_full_design" 2>/dev/null || echo 0)
         if [[ $energy_full -gt 0 ]]; then
             echo $(( energy_now * 100 / energy_full ))
+#for test
+#           percent=$(( energy_now * 100 / energy_full ))
         else
             echo 0
+#for test
+ #           percent=0
         fi
     fi
 }
@@ -89,14 +93,17 @@ calculate_delay() {
 
 
 s3_detect(){
-#file is present
+#determine manual or rtc wake using time based calculation (better detections are welcomed)
 local secnow=$(date +%s)
 local secafterdelay=$((secnow + delay))
-#remove sudo if kept for testing ...!
 
- rtcwake -m mem -s $delay
+#check before resuspend //remove sudo if kept for testing ...!
+battery_action
+
+rtcwake -m mem -s $delay
+
 #execution stops here and countinues after wake 
-#to determine manual or rtc wake use time based calculation
+
 local secafterwake=$(date +%s)
 #this is actually proving to be a good solution despite being time based when scaled to the long delay seconds and we will set the fallback atleast 60 sec
 if [ $secafterdelay -lt $secafterwake ]; then
@@ -106,10 +113,10 @@ echo "RTC wake"
 #for overnight logging
 echo $delay
 #--------
-
+#if file is present
 s3_detect
 else
-#remove sudo here too
+#remove sudo if kept for testing ...!
 echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done and lockfile cleared"
 exit 0
 fi
@@ -118,7 +125,7 @@ fi
 battery_action(){
 #no dialogue countdown at critical battery
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-systemctl hibernate &&  rm -f /tmp/sulockfile && exit 0
+systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0
 #custom hibernate script
 #hibern && exit 0
 fi
@@ -147,7 +154,7 @@ if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
 #can add the helper wrapper hybrid sleep or even hibernate here (hybrid sleeps better as it goes for a suspend with a safety net)
 #systemctl suspend-then-hibernate -i
 #rationale:if the person was present at that level then he should have connected the charger hybrid sleep causes unnecessary battery drain
-systemctl hibernate -i
+systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0
 #hiber is a custom hybrid-sleep script to manage chromium hang
 #hiber
 fi
@@ -186,4 +193,3 @@ fi
 [ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0
 
 battery_action
-
