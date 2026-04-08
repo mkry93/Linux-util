@@ -5,18 +5,16 @@
 for B in /sys/class/power_supply/BAT?; do
     [ -d "$B" ] && BATTERY_PATH="$B" && break
 done
-#exit if not found (need to add a error message)
-[ -z "$BATTERY_PATH" ] && echo "didnt find Battery path" && exit 1
+[ -z "$BATTERY_PATH" ] && echo "didnt find Battery path" && exit 1   #exit if not found (need to add a error message)
 
 # Check dependencies
 command -v bc >/dev/null 2>&1 || { echo "bc is required"; exit 1; }
 command -v yad >/dev/null 2>&1 || { echo "yad is required"; exit 1; }
 command -v upower >/dev/null 2>&1 || { echo "upower is required"; exit 1; }
 
-#get display authorisation
-#getting the magic-cookie to display the yad dialogue //sorted according to current graphical user
-#have noticed missing dialogues in multi-user need cause and fix
 
+#getting the xauth  magic-cookie to display the yad dialogue //sorted according to current graphical user
+#have noticed missing dialogues in multi-user need cause and fix
 for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
     cp "/home/$user/.Xauthority" /root/.Xauthority.tmp 2>/dev/null && {
         export XAUTHORITY=/root/.Xauthority.tmp
@@ -24,21 +22,57 @@ for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
     }
 done
 
-#set values
 
+#set values
 LOW=10
 WARN=20
 
 DRAIN_RATE_WATT=2.0  
 SAFETY_PERCENT=5
 
-#need a no dependency way to get value in Wh (critical...!)
-TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s')
+TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s') #need no dependency way to get Wh (critical...!)
+
 
 
 
 # ----------------
 #function declarations
+
+battery_action(){
+
+#no dialogue countdown at critical battery
+if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
+systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0
+#hibern && rm -f /tmp/sulockfile && exit 0  #custom hibernate script
+fi
+
+# Show non-interactive progress dialog that auto-closes after seconds
+(
+    for i in $(seq 10 -1 1); do
+        percent=$(( (10-i)*100/10 ))
+        echo "$percent"
+        echo "# Sleeping in $i seconds (Battery: $LEVEL%)"
+        sleep 1
+    done
+) | yad --progress \
+    --title="Low Battery: $LEVEL%" \
+    --text="Automatic Sleep...Connect power to terminate" \
+    --timeout=10 \
+    --no-cancel \
+    --width=300 \
+    --undecorated \
+    --no-buttons \
+    --auto-close
+
+get_battery_info #check if plugged-in else hibernate
+
+if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
+systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate
+else
+rm -f /tmp/sulockfile #charger connected so remove loopterigger
+#hibern  #a custom hibernate script to manage chromium hang
+fi
+}
 
 #fallback percent calculation currently unused
 #_________________________
@@ -64,6 +98,7 @@ get_battery_percent() {
 #_________________________________
 
 
+#current capacity and status logic
 #-----------------
 get_battery_info() {
     LEVEL=$(cat "$BATTERY_PATH/capacity")
@@ -73,11 +108,9 @@ get_battery_info() {
 
 calculate_delay() {
     local percent=$1
-    # Calculate available Wh after safety buffer
-    local available_wh=$(echo "scale=2; ($percent - $SAFETY_PERCENT) * $TOTAL_CAPACITY_WH / 100" | bc)
-   
-    # Force immediate hibernate if below safety threshold
-    if (( $(echo "$available_wh <= 0" | bc -l) )); then
+    local available_wh=$(echo "scale=2; ($percent - $SAFETY_PERCENT) * $TOTAL_CAPACITY_WH / 100" | bc) # Calculate available Wh after safety buffer
+
+    if (( $(echo "$available_wh <= 0" | bc -l) )); then       # Force immediate hibernate if below safety threshold
         echo 0
         return
     fi
@@ -99,79 +132,28 @@ calculate_delay() {
 
 
 s3_detect(){
-#determine manual or rtc wake using time based calculation (better detections are welcomed)
+#determine manual or rtc wake using time based calculation (better methods are welcomed)
 local secnow=$(date +%s)
 local secafterdelay=$((secnow + delay))
 
-#check before resuspend //remove sudo if kept for testing ...!
-battery_action
+battery_action #check before resuspend //remove sudo if kept for testing ...!
 
-rtcwake -m mem -s $delay
+rtcwake -m mem -s $delay #execution stops here and countinues after wake 
 
-#execution stops here and countinues after wake 
+local secafterwake=$(date +%s) #tested to be a good solution despite time basing when scaled to the long delay seconds (and will set the fallback atleast 60 sec)
 
-local secafterwake=$(date +%s)
-#this is actually proving to be a good solution despite being time based when scaled to the long delay seconds and we will set the fallback atleast 60 sec
 if [ $secafterdelay -lt $secafterwake ]; then
 echo "RTC wake"
-
-#-----------
-#for overnight logging
-echo $delay
-#--------
-#if file is present
-s3_detect
+echo "next delay ${delay}"
+s3_detect #recurse till manual delay (looping is better)
 else
-#remove sudo if kept for testing ...!
-echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done and lockfile cleared"
+echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
 exit 0
 fi
 }
 
-battery_action(){
-#no dialogue countdown at critical battery
-if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0
-#custom hibernate script
-#hibern && rm -f /tmp/sulockfile && exit 0
-fi
-# Show non-interactive progress dialog that auto-closes after seconds
-(
-    for i in $(seq 10 -1 1); do
-        percent=$(( (10-i)*100/10 ))
-        echo "$percent"
-        echo "# Sleeping in $i seconds (Battery: $LEVEL%)"
-        sleep 1
-    done
-) | yad --progress \
-    --title="Low Battery: $LEVEL%" \
-    --text="Automatic Sleep...Connect power to terminate" \
-    --timeout=10 \
-    --no-cancel \
-    --width=300 \
-    --undecorated \
-    --no-buttons \
-    --auto-close
 
-get_battery_info
-#check if connected else hibernate
-
-if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-#can add the helper wrapper hybrid sleep or even hibernate here (hybrid sleeps better as it goes for a suspend with a safety net)
-#systemctl suspend-then-hibernate -i
-#rationale:if the person was present at that level then he should have connected the charger hybrid sleep causes unnecessary battery drain
-systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0
-else
-#charger connected so remove loopterigger
-rm -f /tmp/sulockfile
-#hiber is a custom hybrid-sleep script to manage chromium hang
-#hiber
-fi
-}
-
-get_battery_info
-
-#get values
+get_battery_info #running to get percent and subsequent delay repeated with timer
 percent=$LEVEL
 	if [[ -z "$percent" ]] || ! [[ "$percent" =~ ^[0-9]+$ ]]; then
             echo "Error: Could not read battery percentage."
@@ -180,26 +162,19 @@ percent=$LEVEL
 
 delay=$(calculate_delay $percent)
 
-#for testing
-#delay=10
-
-
 #echo "Calculated Delay: ${delay} seconds (~$(echo "scale=1; $delay/3600" | bc) hours)"
 #configurable (Would be good if dynamically detected once)
-#------------
 
+
+
+#-----------
 #logic start
 
-get_battery_info
-
-#detect if the file is present and execute
-#this file will be created by a simple suspend wrapper which touches this in temp (need to be cleaned later)
-
-#potential erro here if the suspend was woken up before the helper wrapper completed its first wake therell be a loop
-if [[ -f /tmp/sulockfile ]]; then
+#detect if the lockfile is present in a tmpfs using a suspend wrapper and execute (need to clear lockfile later) 
+if [[ -f /tmp/sulockfile ]]; then #potential error :if suspend was woken up before the helper wrapper completed its first wake therell be a loop (fix needed)
 s3_detect
 fi
-# exit if charging 
-[ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0
 
-battery_action
+[ "$STATUS" != "Discharging" ] || [ "$LEVEL" -gt "$WARN" ] && exit 0 # exit if charging 
+
+battery_action #normal low battery flow
