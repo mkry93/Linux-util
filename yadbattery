@@ -24,11 +24,13 @@ done
 
 
 #set values
-LOW=10
+LOW=15
 WARN=20
-
+#test
 DRAIN_RATE_WATT=2.5  
-SAFETY_PERCENT=5
+#actual
+#DRAIN_RATE_WATT=2.5  
+SAFETY_PERCENT=10
 
 TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s') #need no dependency way to get Wh (critical...!)
 
@@ -46,7 +48,7 @@ rm -f /tmp/sulockfile && systemctl hibernate -i
 exit 0
 #hibern && rm -f /tmp/sulockfile && exit 0  #custom hibernate script
 #fi
-elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/sulockfile ]]; then
+elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/sulockfile ]]; then #no dialogue durin a suspend run
 # Show non-interactive progress dialog that auto-closes after seconds
 (
     for i in $(seq 10 -1 1); do
@@ -70,9 +72,10 @@ fi
 get_battery_info #check if plugged-in else hibernate
 sleep 1
 
-if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-rm -f /tmp/sulockfile && systemctl hibernate -i && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate
-[[ ! -f /tmp/sulockfile ]] && echo "Error check :lock removed did hibernate happen"  
+if [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
+[[ -f /tmp/sulockfile ]] && echo "Error :lock file detected at this stage?,removing for safety" && rm -r /tmp/sulockfile
+systemctl hibernate -i && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate 
+#also this wont(shoudnt) run in a suspend loop so no lockfile removals needed
 #hibern  #custom hibernate script to manage chromium hang
 fi
 }
@@ -120,9 +123,9 @@ calculate_delay() {
 
     local final_seconds=$(echo "$seconds * 1" | bc | cut -d'.' -f1) #do we need a percent increase or decrease here?
     
-    # Minimum 60s cap
-    if [[ $final_seconds -lt 60 ]]; then
-        final_seconds=60
+    # if reached below certain delay cap force hibernate
+    if [[ $final_seconds -lt 300 ]]; then
+        final_seconds=0
     fi
     
     echo $final_seconds
