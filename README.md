@@ -35,7 +35,7 @@ Check Big(O) worst case time. should not exceed 15sec +- 2
 - A simulation folder has a dummy sysfs cp to /tmp or any dir, make a copy of main script, edit prefix of the sysfs detection for loop with your dir
 then echo your values to test various battery conditions
 
-### potential bottlenecks
+### potential bottlenecks/errors
 ---
 1.upower query when slow (.5- 3.0 sec) advisable to switch method to pure arithmetic or faster coreutil
 
@@ -61,3 +61,6 @@ e.systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 here what if hibern
 
 6.CRITICAL for s3wrapper to work either run as root or temporarily escalate 
 priviledge (sudo) due to rtcwake command (help needed:potential solution is adding NOPASSWD for rtcwake in sudoers ,but not appealing security-wise )
+
+7.An almost 12 hour suspend starting at approx 95% charge test has failed with failure to countinue suspend check due to early clearence of lock file 
+potential cause was found in battery_check and rectified but the timer method may also prove to be unreliable. (need testing)
