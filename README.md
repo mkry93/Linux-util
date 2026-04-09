@@ -6,17 +6,25 @@ at a critical range between 10-5%.
 ## Whats done 
 
 The delay calculation ,battery state and level detection , root gui dialogue display resolved, 
-yad dialogue and countdown.
-
+yad dialogue and countdown,to detect whether it was a manual or rtcwake , to run a repeated check when system wakes from the suspend 
+to detect whether it was a manual or rtcwake , to run a repeated check when system wakes from the suspend 
 
 ##  Whats left 
 
-to detect whether it was a manual or rtcwake , to run a repeated check when system wakes from the suspend 
+- Check Big(O) worst case time. should not exceed 15sec +- 2 for timer service and script avoid overlap race conditions
+- considering usage of a fifo or other make lock functions though seems unnecessary currently
+- when the delay is above 4 hrs/discharging cap it at 3-4 hrs till delay comes down mentioned time/charging or add a negative buffer in delay calculation or both?
+- remove upower dependency with pure arithmetic and subsequently other dependencies (until evident advantages and optionally support lower bash versions)
+- avoid systemd timer if possible and replace with a low memory latency polling method
+- find a secure way to run suspend wrapper for all users without escalating priviledges(use suspend-then-hibernate hibernatedelaysec ?) 
+- remove systemd suspend calls with rtcwake commands if possible 
+- find any interference with long running processes or hanged situations (bigger delay)
+- any indication that the suspend loop was completed and battery has reached critical levels and hibernated (for info only no utility use i can think of now) 
 
 #### Potential clues
 
 rtcwake command can do a s3 or s4 state with a RTC clock which runs in both modes and can trigger a wake
-currently systemd commands are used and are in thought to be changed
+currently systemd commands are used and are in consideration to be changed
 
 ## Usage
 
@@ -26,11 +34,9 @@ the intervals can be tuned which works best for you
 
 ## additional
 
-Prefer low latency coreutils , reduce additional dependencies (yet optionally use common installed utils if needed) ,
+- Prefer low latency coreutils , reduce additional dependencies (yet optionally use common installed utils if needed) ,
 avoid polling with very small intervals to avoid overhead or countinuos looping , avoid race conditions when tampering system files 
 very short wakeup for check time can cause same delay to be reused (maybe upower quirk )
-
-Check Big(O) worst case time. should not exceed 15sec +- 2
 
 - A simulation folder has a dummy sysfs cp to /tmp or any dir, make a copy of main script, edit prefix of the sysfs detection for loop with your dir
 then echo your values to test various battery conditions
@@ -41,17 +47,17 @@ then echo your values to test various battery conditions
 
 2.delays in battery_action: 
 
-a.reduce yad dialogue or increase timer to 30 sec
+- reduce yad dialogue or increase timer to 30 sec
 
-b.systemctl hibernate may take upto 30 sec .timer job has to be stopped within the repeat range we get a worst case of 5(init_setup)+10(dialogue)=15 sec.
+- systemctl hibernate may take upto 30 sec .timer job has to be stopped within the repeat range we get a worst case of 5(init_setup)+10(dialogue)=15 sec.
 so the first 5 sec need to terminate the timer job or increase timer to 30 sec
 
-c.calling of battery_action in s3_detect (battery_action may have a 40 sec worst case)
+- calling of battery_action in s3_detect (battery_action may have a 40 sec worst case)
 
-d.a potential crash can persist the lockfile (unlikely as the next timer job should kill it or no? need verification) (also countinues crashes will cause a loop)
+- a potential crash can persist the lockfile (unlikely as the next timer job should kill it or no? need verification) (also countinues crashes will cause a loop)
 (also systems not using tmpfs for tmp or clears temp at reboot cause issue)
 
-e.systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 here what if hibernte fails but lockfiles removed? how does this work need help
+- systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 here what if hibernte fails but lockfiles removed? how does this work need help
 
 3.X Authority Detection have noticed missing dialogues in multi-user need fix
 
