@@ -71,9 +71,8 @@ get_battery_info #check if plugged-in else hibernate
 sleep 1
 
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate
-else
-rm -f /tmp/sulockfile #charger connected so remove looptrigger
+rm -f /tmp/sulockfile && systemctl hibernate -i && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate
+[[ ! -f /tmp/sulockfile ]] && echo "Error check :lock removed did hibernate happen"  
 #hibern  #custom hibernate script to manage chromium hang
 fi
 }
