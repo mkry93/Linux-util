@@ -5,7 +5,7 @@ After=graphical-session.target
 [Service]
 Type=oneshot
 User=root
-ExecStart=/usr/local/bin/yadbattery
+ExecStart=/usr/local/bin/yadbattery > /tmp/batterytimerlog 2>&1
 TimeoutSec=60
 Environment=DISPLAY=:0
 
