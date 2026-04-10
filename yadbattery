@@ -23,20 +23,24 @@ for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
 done
 
 
-#set values
-LOW=10
+#solid set values
+LOW=15 #currently effectively hibernates at low delay=0 battery_action remove lock and hibernate
 WARN=20
-
-DRAIN_RATE_WATT=2.5  
-SAFETY_PERCENT=5
-
-TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s') #need no dependency way to get Wh (critical...!)
-
-
+SAFETY_PERCENT=10
 
 
 # ----------------
 #function declarations
+
+
+#refresh dynamic values when needed
+refresh_values(){
+TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s') #need no dependency way to get Wh (critical...!)
+DRAIN_RATE_WATT=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-rate:\s*\K[\d.]+')  #May becomes zero at times (1.when charger disconnected)
+if [[ -z "$DRAIN_RATE_WATT" ]] || (( $(echo "$DRAIN_RATE_WATT <= 0" | bc -l) )); then #bc for float calculation but spawns a subshell (need faster impl)
+        DRAIN_RATE_WATT=10.0  # Conservative fallback to prevent crash (optional another way for dynamism (portability:option))
+    fi
+}
 
 battery_action(){
 #no dialogue countdown at critical battery
@@ -46,7 +50,7 @@ rm -f /tmp/sulockfile && systemctl hibernate -i
 exit 0
 #hibern && rm -f /tmp/sulockfile && exit 0  #custom hibernate script
 #fi
-elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/sulockfile ]]; then
+elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/sulockfile ]]; then #no dialogue durin a suspend run
 # Show non-interactive progress dialog that auto-closes after seconds
 (
     for i in $(seq 10 -1 1); do
@@ -70,9 +74,10 @@ fi
 get_battery_info #check if plugged-in else hibernate
 sleep 1
 
-if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-rm -f /tmp/sulockfile && systemctl hibernate -i && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate
-[[ ! -f /tmp/sulockfile ]] && echo "Error check :lock removed did hibernate happen"  
+if [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
+[[ -f /tmp/sulockfile ]] && echo "Error :lock file detected at this stage?,removing for safety" && rm -r /tmp/sulockfile
+systemctl hibernate -i && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate 
+#also this wont(shoudnt) run in a suspend loop so no lockfile removals needed
 #hibern  #custom hibernate script to manage chromium hang
 fi
 }
@@ -106,6 +111,7 @@ get_battery_info() {
 #-----------------
 
 calculate_delay() {
+#refresh_values #prevent unnecessary calls + mock support + logging (how?)
     local percent=$1 #passed argument
     local available_wh=$(echo "scale=2; ($percent - $SAFETY_PERCENT) * $TOTAL_CAPACITY_WH / 100" | bc) # Calculate available Wh after safety buffer
 
@@ -118,11 +124,11 @@ calculate_delay() {
     local hours=$(echo "scale=2; $available_wh / $DRAIN_RATE_WATT" | bc)
     local seconds=$(echo "$hours * 3600" | bc | cut -d'.' -f1)
 
-    local final_seconds=$(echo "$seconds * 1" | bc | cut -d'.' -f1) #do we need a percent increase or decrease here?
+    local final_seconds=$(echo "$seconds * 0.90" | bc | cut -d'.' -f1) #do we need a percent increase or decrease here?
     
-    # Minimum 60s cap
-    if [[ $final_seconds -lt 60 ]]; then
-        final_seconds=60
+    # if reached below certain delay cap force hibernate
+    if [[ $final_seconds -lt 600 ]]; then
+        final_seconds=0
     fi
     
     echo $final_seconds
@@ -133,6 +139,7 @@ s3_detect(){
 #determine manual or rtc wake using time based calculation (better methods are welcomed)
 while [[ -f /tmp/sulockfile ]]
 do
+refresh_values
 calculate_delay $percent >/dev/null
 local delay=$(calculate_delay $percent)
 
@@ -151,6 +158,7 @@ local tolsecafterwake=$((secafterwake + 2)) #tolerance time
 
 if [ $secafterdelay -lt $tolsecafterwake ]; then
 [[ "$delay" -ne 0 ]] && echo "RTC wake"
+[[ "$delay" -eq 0 ]] && exit 0
 #s3_detect #recurse till manual delay (looping is better)
 else
 echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
