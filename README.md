@@ -20,7 +20,7 @@ to detect whether it was a manual or rtcwake , to run a repeated check when syst
 - remove systemd suspend calls with rtcwake commands if possible 
 - find any interference with long running processes or hanged situations (bigger delay)
 - an indication that the suspend loop was completed and battery has reached critical levels and hibernated (for info only no utility use i can think of now) 
-
+- error handling when hibernate fails from OS's side (not critical now as lockfile is removed, data loss after battery drain to death)
 #### Potential clues
 
 rtcwake command can do a s3 or s4 state with a RTC clock which runs in both modes and can trigger a wake
@@ -59,7 +59,8 @@ so the first 5 sec need to terminate the timer job or increase timer to 30 sec
 
 - systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 here what if hibernte fails but lockfiles removed? how does this work need help
 
-3.X Authority Detection have noticed missing dialogues in multi-user need fix
+3.X Authority Detection logic ,have noticed missing dialogues in multi-user need fix
+- yad dialogues dont show at times but still the work after it is done,(make xauth detect a function and call just before yad display?)
 
 4.add a recursion counter for the s3_detect call (help needed whether its necessary)
 

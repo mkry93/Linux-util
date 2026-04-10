@@ -124,10 +124,10 @@ calculate_delay() {
     local hours=$(echo "scale=2; $available_wh / $DRAIN_RATE_WATT" | bc)
     local seconds=$(echo "$hours * 3600" | bc | cut -d'.' -f1)
 
-    local final_seconds=$(echo "$seconds * 1" | bc | cut -d'.' -f1) #do we need a percent increase or decrease here?
+    local final_seconds=$(echo "$seconds * 0.90" | bc | cut -d'.' -f1) #do we need a percent increase or decrease here?
     
     # if reached below certain delay cap force hibernate
-    if [[ $final_seconds -lt 300 ]]; then
+    if [[ $final_seconds -lt 600 ]]; then
         final_seconds=0
     fi
     
