@@ -23,22 +23,24 @@ for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
 done
 
 
-#set values
+#solid set values
 LOW=15
 WARN=20
-#test
-DRAIN_RATE_WATT=2.5  
-#actual
-#DRAIN_RATE_WATT=2.5  
 SAFETY_PERCENT=10
-
-TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s') #need no dependency way to get Wh (critical...!)
-
-
 
 
 # ----------------
 #function declarations
+
+
+#refresh dynamic values when needed
+refresh_values(){
+TOTAL_CAPACITY_WH=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-full:\s*\K[\d.]+\s') #need no dependency way to get Wh (critical...!)
+DRAIN_RATE_WATT=$(upower -i /org/freedesktop/UPower/devices/battery_BAT1 | grep -P -o 'energy-rate:\s*\K[\d.]+')  #May becomes zero at times (1.when charger disconnected)
+if [[ -z "$DRAIN_RATE_WATT" ]] || (( $(echo "$DRAIN_RATE_WATT <= 0" | bc -l) )); then #bc for float calculation but spawns a subshell (need faster impl)
+        DRAIN_RATE_WATT=10.0  # Conservative fallback to prevent crash (optional another way for dynamism (portability:option))
+    fi
+}
 
 battery_action(){
 #no dialogue countdown at critical battery
@@ -109,6 +111,7 @@ get_battery_info() {
 #-----------------
 
 calculate_delay() {
+#refresh_values #prevent unnecessary calls + mock support + logging (how?)
     local percent=$1 #passed argument
     local available_wh=$(echo "scale=2; ($percent - $SAFETY_PERCENT) * $TOTAL_CAPACITY_WH / 100" | bc) # Calculate available Wh after safety buffer
 
@@ -136,6 +139,7 @@ s3_detect(){
 #determine manual or rtc wake using time based calculation (better methods are welcomed)
 while [[ -f /tmp/sulockfile ]]
 do
+refresh_values
 calculate_delay $percent >/dev/null
 local delay=$(calculate_delay $percent)
 
