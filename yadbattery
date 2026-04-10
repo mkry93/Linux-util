@@ -24,7 +24,7 @@ done
 
 
 #solid set values
-LOW=15
+LOW=15 #currently effectively hibernates at low delay=0 battery_action remove lock and hibernate
 WARN=20
 SAFETY_PERCENT=10
 
@@ -158,6 +158,7 @@ local tolsecafterwake=$((secafterwake + 2)) #tolerance time
 
 if [ $secafterdelay -lt $tolsecafterwake ]; then
 [[ "$delay" -ne 0 ]] && echo "RTC wake"
+[[ "$delay" -eq 0 ]] && exit 0
 #s3_detect #recurse till manual delay (looping is better)
 else
 echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
