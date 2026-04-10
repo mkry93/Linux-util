@@ -60,7 +60,7 @@ so the first 5 sec need to terminate the timer job or increase timer to 30 sec
 - systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 here what if hibernte fails but lockfiles removed? how does this work need help
 
 3.X Authority Detection logic ,have noticed missing dialogues in multi-user need fix
-- yad dialogues dont show at times but still the work after it is done,(make xauth detect a function and call just before yad display?)
+- yad dialogues dont show at times but still the work after it is done,(declare xauth detection as a function and call just before yad display?)
 
 4.add a recursion counter for the s3_detect call (help needed whether its necessary)
 
