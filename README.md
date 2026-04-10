@@ -43,7 +43,7 @@ then echo your values to test various battery conditions
 
 ### potential bottlenecks/errors
 ---
-1.upower query when slow (.5- 3.0 sec) advisable to switch method to pure arithmetic or faster coreutil
+1.upower query when slow (.5- 3.0 sec) advisable to switch method to pure arithmetic or faster coreutil & upower not updating power properly (need check)
 
 2.delays in battery_action: 
 
