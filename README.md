@@ -71,7 +71,3 @@ priviledge (sudo) due to rtcwake command (help needed:potential solution is addi
 
 7.An almost 12 hour suspend starting at approx 95% charge test has failed with failure to countinue suspend check due to early clearence of lock file 
 potential cause was found in battery_check and rectified but the timer method may also prove to be unreliable. (need testing)
-
-
----
-# NOTE:latest work on lowedge branch, while main script mostly works there may be edge cases (WIP)
