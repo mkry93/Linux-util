@@ -79,3 +79,5 @@ Hardening steps
 ---
 7.An almost 12 hour suspend starting at approx 95% charge test has failed with failure to countinue suspend check due to early clearence of lock file 
 potential cause was found in battery_check and rectified but the timer method may also prove to be unreliable. (need testing)
+
+8.How to deal(cancel suspend) between the wrapper timeout till the timer catches up and starts the s3_detect loop.
