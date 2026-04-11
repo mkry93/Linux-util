@@ -66,8 +66,14 @@ so the first 5 sec need to terminate the timer job or increase timer to 30 sec
 
 5.for practical reasons is it necessary to add a max 3-4 hour check if exceeding at worst condition(100%) the delay would be ~16 hours
 
-6.CRITICAL for s3wrapper to work either run as root or temporarily escalate 
-priviledge (sudo) due to rtcwake command (help needed:potential solution is adding NOPASSWD for rtcwake in sudoers ,but not appealing security-wise )
+6.CRITICAL s3wrapper need  root or temporarily escalate privilages (sudo) due to rtcwake command (help needed:potential solutions ..)
+- adding NOPASSWD for wrapper in sudoers ,but not appealing security-wise (sudo only systems)
+- setuid bit (means hardening of wrapper required)(info only dont use) 
+- polkit rule for rtcwake commmand for users group(preferred for now but complex setup)
+- give cap_dac_override capability (very risky if the binary is compromised)
+-- Hardening steps 
+- immutable lock flag (chattr +i /binary) (-i for reversing)
+- no write acess to binary (chmod 555) 
 
 7.An almost 12 hour suspend starting at approx 95% charge test has failed with failure to countinue suspend check due to early clearence of lock file 
 potential cause was found in battery_check and rectified but the timer method may also prove to be unreliable. (need testing)
