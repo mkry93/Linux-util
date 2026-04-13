@@ -72,7 +72,7 @@ so the first 5 sec need to terminate the timer job or increase timer to 30 sec
 - polkit rule for rtcwake commmand for users group(preferred for now but complex setup)
 - give cap_dac_override capability (very risky if the binary is compromised)
 
-Hardening steps
+Hardening steps(for cap_dac_override permission)
 --- 
 - no write acess to binary (chmod 555) (do this first before immutable lock) 
 - immutable lock flag (chattr +i /binary,-i for reversing) (remove the lock during updates [package:linux-util(systemcore package)])
