@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# ask for root using pkexec 
+if [ "$(id -u)" -ne 0 ]; then #id not 0 means not root
+    exec pkexec "$0" "$@"
+fi
+
 #suspend command wrapper 
 delay=20 #below 15 causes issues #going below 15 has caused rtc to be labelled as manual (-s 10 when tested) 
 #time based detection

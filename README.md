@@ -77,6 +77,8 @@ Hardening steps(for cap_dac_override permission)
 - no write acess to binary (chmod 555) (do this first before immutable lock) 
 - immutable lock flag (chattr +i /binary,-i for reversing) (remove the lock during updates [package:linux-util(systemcore package)])
 ---
+- Using pkexec - each wrapper call asks for a polkit auth (enter password dialogue) which elevates to root one run. (Current method,Comparitively secure).
+
 7.An almost 12 hour suspend starting at approx 95% charge test has failed with failure to countinue suspend check due to early clearence of lock file 
 potential cause was found in battery_check and rectified but the timer method may also prove to be unreliable. (need testing)
 
