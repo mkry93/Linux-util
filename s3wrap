@@ -16,10 +16,17 @@ rtcwake -m mem -s $delay > /dev/null #safe init time beacause entering suspend m
 secafterwake=$(date +%s) 
 tolsecafterwake=$((secafterwake + 2)) #tolerance time needed for small interval rtcwakes
 
-if [ $secafterdelay -lt $tolsecafterwake ]; then
+#added error handling for lockfile
+#the added conditional checks may cause failure in this time critical setup (need help)
+if [ $secafterdelay -lt $tolsecafterwake ] && [ ! -f /tmp/sulockfile ]; then
 touch /tmp/sulockfile
-echo "completed delay, wrote lock"
+echo "no lockfile detected,completed delay,wrote lock"
+elif [ $secafterdelay -lt $tolsecafterwake ] && [ -f /tmp/sulockfile ]; then
+echo "lockfile exists...!,completed delay"	#investigate lockfile presistence
+elif [ $secafterdelay -gt $tolsecafterwake ] && [ -f /tmp/sulockfile ]; then
+echo "lockfile exist,but manual wake, removing lock" #investigate lockfile presistence 
+rm -f /tmp/sulockfile
 else
-echo "manually woke, no lock" #or by error
+echo "early manual wake"
 fi
 #temporary lockfile is currently cleared by main script (help for testing edge cases needed)
