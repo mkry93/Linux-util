@@ -14,13 +14,16 @@ to detect whether it was a manual or rtcwake , to run a repeated check when syst
 - Check Big(O) worst case time. should not exceed 15sec +- 2 for timer service and script avoid overlap race conditions
 - considering usage of a fifo or other make lock functions though seems unnecessary currently
 - when the delay is above 4 hrs/discharging cap it at 3-4 hrs till delay comes down mentioned time/charging or add a negative buffer in delay calculation or both?
-- remove upower dependency (refresh_values) with pure arithmetic instead and subsequently other dependencies (until evident advantages and optionally support lower bash versions)
+- remove upower dependency (refresh_values) with pure arithmetic instead and subsequently other dependencies (if evident advantages and optionally support lower bash versions)
 - avoid systemd timer if possible and replace with a low memory latency polling method
 - find a secure way to run suspend wrapper for all users without escalating priviledges(use suspend-then-hibernate hibernatedelaysec ?) 
 - remove systemd suspend calls with rtcwake commands if possible 
 - find any interference with long running processes or hanged situations (bigger delay)
 - an indication that the suspend loop was completed and battery has reached critical levels and hibernated (for info only no utility use i can think of now) 
-- error handling when hibernate fails from OS's side (not critical now as lockfile is removed, data loss after battery drain to death)
+- error handling when hibernate fails from OS's side (not critical now as lockfile is removed then,but data loss after battery drain to death)
+---
+- Zramswap has caused page allocation issues during hibernate in systemd systems.
+---
 #### Potential clues
 
 rtcwake command can do a s3 or s4 state with a RTC clock which runs in both modes and can trigger a wake
@@ -42,7 +45,7 @@ very short wakeup for check time can cause same delay to be reused (maybe upower
 then echo your values to test various battery conditions
 
 ### potential bottlenecks/errors
----
+
 1.upower query when slow (.5- 3.0 sec) advisable to switch method to pure arithmetic or faster coreutil & upower not updating power properly (need check)
 
 2.delays in battery_action: 
