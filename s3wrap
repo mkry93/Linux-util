@@ -5,28 +5,17 @@ if [ "$(id -u)" -ne 0 ]; then #id not 0 means not root
     exec pkexec "$0" "$@"
 fi
 
-#suspend command wrapper 
-delay=20 #below 15 causes issues #going below 15 has caused rtc to be labelled as manual (-s 10 when tested) 
-#time based detection
-secnow=$(date +%s)
-secafterdelay=$((secnow + delay))
+command -v yadbattery >/dev/null 2>&1 || { echo "cant find script in path,exiting"; exit 1; } #check script existence
 
-rtcwake -m mem -s $delay > /dev/null #safe init time beacause entering suspend may/can take some time followed by timer job takeover 
-
-secafterwake=$(date +%s) 
-tolsecafterwake=$((secafterwake + 2)) #tolerance time needed for small interval rtcwakes
-
-#added error handling for lockfile
-#the added conditional checks may cause failure in this time critical setup (need help)
-if [ $secafterdelay -lt $tolsecafterwake ] && [ ! -f /tmp/sulockfile ]; then
+#conditions for logging (touching lockfile followed by script only works too.)
+if [ ! -f /tmp/sulockfile ]; then
 touch /tmp/sulockfile
-echo "no lockfile detected,completed delay,wrote lock"
-elif [ $secafterdelay -lt $tolsecafterwake ] && [ -f /tmp/sulockfile ]; then
-echo "lockfile exists...!,completed delay"	#investigate lockfile presistence
-elif [ $secafterdelay -gt $tolsecafterwake ] && [ -f /tmp/sulockfile ]; then
-echo "lockfile exist,but manual wake, removing lock" #investigate lockfile presistence 
-rm -f /tmp/sulockfile
+echo "no lockfile detected,wrote lock"
+yadbattery
+elif [ -f /tmp/sulockfile ]; then
+echo "lockfile exists...!,countinue suspend"
+yadbattery
 else
-echo "early manual wake"
+echo "cant access file status/unknown condition, exiting" #investigate lockfile attributes/permissions of filesystem
+exit 1 
 fi
-#temporary lockfile is currently cleared by main script (help for testing edge cases needed)

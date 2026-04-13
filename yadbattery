@@ -15,7 +15,7 @@ command -v upower >/dev/null 2>&1 || { echo "upower is required"; exit 1; }
 
 
 #solid set values
-LOW=15 #currently effectively hibernates at low delay=0 battery_action remove lock and hibernate
+LOW=15 #currently effectively hibernates at low,sets delay=0 to battery_action remove lock and hibernate
 WARN=20
 SAFETY_PERCENT=10 #when reaches this % somtimes, then the script calls immediate hibernation
 
