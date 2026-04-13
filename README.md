@@ -44,11 +44,12 @@ very short wakeup for check time can cause same delay to be reused (maybe upower
 - A simulation folder has a dummy sysfs cp to /tmp or any dir, make a copy of main script, edit prefix of the sysfs detection for loop with your dir
 then echo your values to test various battery conditions
 
-### potential bottlenecks/errors
+### --potential bottlenecks/errors--
 
-1.upower query when slow (.5- 3.0 sec) advisable to switch method to pure arithmetic or faster coreutil & upower not updating power properly (need check)
 
-2.delays in battery_action: 
+**1**.upower query when slow (.5- 3.0 sec) advisable to switch method to pure arithmetic or faster coreutil & upower not updating power properly (need check)
+
+**2**.delays in battery_action: 
 
 - reduce yad dialogue or increase timer to 30 sec
 
@@ -62,14 +63,14 @@ so the first 5 sec need to terminate the timer job or increase timer to 30 sec
 
 - systemctl hibernate -i &&  rm -f /tmp/sulockfile && exit 0 here what if hibernte fails but lockfiles removed? how does this work need help
 
-3.X Authority Detection logic ,have noticed missing dialogues in multi-user need fix
+**3**.X Authority Detection logic ,have noticed missing dialogues in multi-user need fix
 - yad dialogues dont show at times but still the work after it is done,(declare xauth detection as a function and call just before yad display?)
 
-4.add a recursion counter for the s3_detect call (help needed whether its necessary)
+**4**.add a recursion counter for the s3_detect call (help needed whether its necessary)
 
-5.for practical reasons is it necessary to add a max 3-4 hour check if exceeding at worst condition(100%) the delay would be ~16 hours
+**5**.for practical reasons is it necessary to add a max 3-4 hour check if exceeding at worst condition(100%) the delay would be ~16 hours
 
-6.CRITICAL s3wrapper need  root or temporarily escalate privilages (sudo) due to rtcwake command (help needed:potential solutions ..)
+**6**.CRITICAL s3wrapper need  root or temporarily escalate privilages (sudo) due to rtcwake command (help needed:potential solutions ..)
 - adding NOPASSWD for wrapper in sudoers ,but not appealing security-wise (sudo only systems)
 - setuid bit (means hardening of wrapper required)(info only dont use) 
 - polkit rule for rtcwake commmand for users group(preferred for now but complex setup)
@@ -82,7 +83,7 @@ Hardening steps(for cap_dac_override permission)
 ---
 - Using pkexec - each wrapper call asks for a polkit auth (enter password dialogue) which elevates to root one run. (Current method,Comparitively secure).
 
-7.An almost 12 hour suspend starting at approx 95% charge test has failed with failure to countinue suspend check due to early clearence of lock file 
+**7**.An almost 12 hour suspend starting at approx 95% charge test has failed with failure to countinue suspend check due to early clearence of lock file 
 potential cause was found in battery_check and rectified but the timer method may also prove to be unreliable. (need testing)
 
-8.How to deal(cancel suspend) between the wrapper timeout till the timer catches up and starts the s3_detect loop.
+**8**.How to deal(cancel suspend) between the wrapper timeout till the timer catches up and starts the s3_detect loop.
