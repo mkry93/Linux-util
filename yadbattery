@@ -13,6 +13,18 @@ command -v yad >/dev/null 2>&1 || { echo "yad is required"; exit 1; }
 command -v upower >/dev/null 2>&1 || { echo "upower is required"; exit 1; }
 
 
+
+#solid set values
+LOW=15 #currently effectively hibernates at low delay=0 battery_action remove lock and hibernate
+WARN=20
+SAFETY_PERCENT=10 #when reaches this % somtimes, then the script calls immediate hibernation
+
+
+# ----------------
+#function declarations
+
+
+get_xauth(){
 #getting the xauth  magic-cookie to display the yad dialogue //sorted according to current graphical user
 #have noticed missing dialogues in multi-user need cause and fix
 for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
@@ -21,17 +33,7 @@ for user in $(who | grep "(:[0-9]" | cut -d' ' -f1 | head -1); do
         break
     }
 done
-
-
-#solid set values
-LOW=15 #currently effectively hibernates at low delay=0 battery_action remove lock and hibernate
-WARN=20
-SAFETY_PERCENT=10
-
-
-# ----------------
-#function declarations
-
+}
 
 #refresh dynamic values when needed
 refresh_values(){
@@ -45,12 +47,13 @@ if [[ -z "$DRAIN_RATE_WATT" ]] || (( $(echo "$DRAIN_RATE_WATT <= 0" | bc -l) ));
 battery_action(){
 #no dialogue countdown at critical battery
 get_battery_info
+get_xauth #call each time the elif dialogue needs to run
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
 rm -f /tmp/sulockfile && systemctl hibernate -i
 exit 0
 #hibern && rm -f /tmp/sulockfile && exit 0  #custom hibernate script
 #fi
-elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/sulockfile ]]; then #no dialogue durin a suspend run
+elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/sulockfile ]]; then #last one for no dialogue durin a suspend run
 # Show non-interactive progress dialog that auto-closes after seconds
 (
     for i in $(seq 10 -1 1); do
@@ -72,7 +75,7 @@ elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/s
 fi
 
 get_battery_info #check if plugged-in else hibernate
-sleep 1
+sleep 1 #to avoid potential execute before recheck situation
 
 if [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
 [[ -f /tmp/sulockfile ]] && echo "Error :lock file detected at this stage?,removing for safety" && rm -r /tmp/sulockfile
