@@ -23,16 +23,17 @@ same delay to be reused (maybe upower quirk )
 - remove systemd suspend calls with rtcwake commands if needed
 - find any interference with long running processes or hanged situations (bigger delay)
 - an indication that the suspend loop was completed and battery has reached critical levels and hibernated (for info only no utility use as of now) 
+- touch the LOCK file with random names(using mktemp?)
+- need checking for deps all time or store it in the lock file (what if one of the becomes unavailable during suspends?Possible?)
 - error handling when hibernate fails from OS's side (not critical now as lockfile is removed then,but data loss after battery drain to death)
-- optionally remove wrapper and unify it into one script for both timer and init suspend(if non root run the pkexec one?)
 ---
 - Zramswap has caused page allocation issues during hibernate in systemd systems.
 ---
 ## Usage
 
-- copy the main script to the location specified on the systemd service file (current timer method [systemd-timer]) and wrapper script to a system path location.
+- copy the main script to the location specified on the systemd service file (current timer method [systemd-timer])
 - install the timer and the service file and enable them as systemd root 
-- run s3wrap in terminal or make a keybind for ease
+- run script in terminal or make a keybind for ease
 
 ## Testing
 - A simulation folder has a dummy sysfs cp to /tmp or any dir, make a copy of main script, edit prefix of the sysfs detection for loop with your dir
@@ -79,3 +80,5 @@ so the first 5 sec need to terminate the timer job or increase timer to 30 sec
 potential cause was found in battery_check and rectified but the timer method may also prove to be unreliable. (need testing)
 
 **7**.~~How to deal(cancel suspend) between the wrapper timeout till the timer catches up and starts the s3_detect loop.~~
+
+**8**.Race Condition where one timer triggered script runs the yad dialogue then the timer triggers another dialogue after interval.(not observed just a possibility to mitigate)(add a pid check?)

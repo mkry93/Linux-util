@@ -1,23 +1,49 @@
 #!/bin/bash
 
+# Check if running as root
+if [ "$(id -u)" -ne 0 ]; then # Not root - attempt privilege escalation via pkexec
+command -v pkexec >/dev/null 2>&1 || { echo "pkexec is required"; exit 1; } #no pkexec script exits
+    if ! pkexec "$0" "$@"; then #Failed to gain root privileges via pkexec
+        exit 1
+    fi
+    exit $?   # If pkexec succeeds, it replaces this process with a new root process and this line wont exec, else a PID will be caught
+fi
+
+# From this point, we should be running as root (root timer starts here)
+
+#solid set values
+LOW=15 #currently effectively hibernates at low,sets delay=0 to battery_action remove lock and hibernate
+WARN=20
+SAFETY_PERCENT=10 #when reaches this % somtimes, then the script calls immediate hibernation
+LOCK=/tmp/sulockfile #should be a tmpfs (cleared on reboot not s4/s3 states..!)
+
+GAINED_ROOT_VIA_PKEXEC=false # Check if we got here via pkexec (PKEXEC_UID is set by pkexec)
+if [ -n "$PKEXEC_UID" ]; then
+    GAINED_ROOT_VIA_PKEXEC=true
+fi
+
+# Only write lockfile if we gained root via pkexec
+# If already started as root, skip lockfile logic entirely
+if [ "$GAINED_ROOT_VIA_PKEXEC" = true ]; then
+    if [ ! -f "$LOCK" ]; then
+        touch "$LOCK"
+        echo "No lockfile detected, wrote lock"
+    else
+        echo "Lockfile exists... continue suspend"
+    fi
+fi
+
+#Check dependencies
+command -v bc >/dev/null 2>&1 || { echo "bc is required"; exit 1; }
+command -v yad >/dev/null 2>&1 || { echo "yad is required"; exit 1; }
+command -v upower >/dev/null 2>&1 || { echo "upower is required"; exit 1; }
+
 #find the battery using sysfs or error out
 #may fail for multi-battery (please help in testing and reporting) or if your system labels power supply as BAT (unlikely)
 for B in /sys/class/power_supply/BAT?; do
     [ -d "$B" ] && BATTERY_PATH="$B" && break
 done
 [ -z "$BATTERY_PATH" ] && echo "didnt find Battery path" && exit 1   #exit if not found (need to add a error message)
-
-# Check dependencies
-command -v bc >/dev/null 2>&1 || { echo "bc is required"; exit 1; }
-command -v yad >/dev/null 2>&1 || { echo "yad is required"; exit 1; }
-command -v upower >/dev/null 2>&1 || { echo "upower is required"; exit 1; }
-
-
-
-#solid set values
-LOW=15 #currently effectively hibernates at low,sets delay=0 to battery_action remove lock and hibernate
-WARN=20
-SAFETY_PERCENT=10 #when reaches this % somtimes, then the script calls immediate hibernation
 
 
 # ----------------
@@ -49,11 +75,11 @@ battery_action(){
 get_battery_info
 get_xauth #call each time the elif dialogue needs to run
 if [ "$LEVEL" -le "$LOW" ] && [ "$STATUS" = "Discharging" ]; then
-rm -f /tmp/sulockfile && systemctl hibernate -i
+rm -f $LOCK && systemctl hibernate -i
 exit 0
-#hibern && rm -f /tmp/sulockfile && exit 0  #custom hibernate script
+#hibern && rm -f $LOCK && exit 0  #custom hibernate script
 #fi
-elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f /tmp/sulockfile ]]; then #last one for no dialogue durin a suspend run
+elif [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ] && [[ ! -f $LOCK ]]; then #last one for no dialogue durin a suspend run
 # Show non-interactive progress dialog that auto-closes after seconds
 (
     for i in $(seq 10 -1 1); do
@@ -78,7 +104,7 @@ get_battery_info #check if plugged-in else hibernate
 sleep 1 #to avoid potential execute before recheck situation
 
 if [ "$LEVEL" -le "$WARN" ] && [ "$STATUS" = "Discharging" ]; then
-[[ -f /tmp/sulockfile ]] && echo "Error :lock file detected at this stage?,removing for safety" && rm -r /tmp/sulockfile
+[[ -f $LOCK ]] && echo "Warning :lock file detected at this stage?,removing for safety" && rm -r $LOCK
 systemctl hibernate -i && exit 0 #rationale:if the person was present would have plugged-in (assumption) prevent unnecesary hibernate 
 #also this wont(shoudnt) run in a suspend loop so no lockfile removals needed
 #hibern  #custom hibernate script to manage chromium hang
@@ -140,7 +166,7 @@ calculate_delay() {
 
 s3_detect(){
 #determine manual or rtc wake using time based calculation (better methods are welcomed)
-while [[ -f /tmp/sulockfile ]]
+while [[ -f $LOCK ]]
 do
 refresh_values
 calculate_delay $percent >/dev/null
@@ -162,9 +188,9 @@ local tolsecafterwake=$((secafterwake + 2)) #tolerance time
 if [ $secafterdelay -lt $tolsecafterwake ]; then
 [[ "$delay" -ne 0 ]] && echo "RTC wake"
 [[ "$delay" -eq 0 ]] && exit 0
-#s3_detect #recurse till manual delay (looping is better)
+#s3_detect looping till manual delay
 else
-echo "manual wake" &&  rm -f /tmp/sulockfile && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
+echo "manual wake" &&  rm -f $LOCK && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
 exit 0 #since timer will run it again and can comfortably quit here
 fi
 done
@@ -184,7 +210,7 @@ percent=$LEVEL
 #logic start
 #detect if the lockfile is present in a tmpfs created using a suspend wrapper and execute (need to clear lockfile later)
 #important decide the initial timer or add error handling to prevent suspend loop 
-if [[ -f /tmp/sulockfile ]]; then #potential error :if suspend was woken up before the helper wrapper completed its first wake therell be a loop (fix needed)
+if [[ -f $LOCK ]]; then #potential error :if suspend was woken up before the helper wrapper completed its first wake therell be a loop (fix needed)
 s3_detect
 fi
 
