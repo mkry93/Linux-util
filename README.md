@@ -32,9 +32,9 @@ same delay to be reused (maybe upower quirk )
 ---
 ## Usage
 
-- copy the main script to the location specified on the systemd service file (current timer method [systemd-timer]) and wrapper script to a system path location.
+- copy the main script to the location specified on the systemd service file (current timer method [systemd-timer])
 - install the timer and the service file and enable them as systemd root 
-- run s3wrap in terminal or make a keybind for ease
+- run script in terminal or make a keybind for ease
 
 ## Testing
 - A simulation folder has a dummy sysfs cp to /tmp or any dir, make a copy of main script, edit prefix of the sysfs detection for loop with your dir
