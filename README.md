@@ -23,10 +23,9 @@ same delay to be reused (maybe upower quirk )
 - remove systemd suspend calls with rtcwake commands if needed
 - find any interference with long running processes or hanged situations (bigger delay)
 - an indication that the suspend loop was completed and battery has reached critical levels and hibernated (for info only no utility use as of now) 
-- error handling when hibernate fails from OS's side (not critical now as lockfile is removed then,but data loss after battery drain to death)
-- optionally remove wrapper and unify it into one script for both timer and init suspend
 - touch the LOCK file with random names(using mktemp?)
 - need checking for deps all time or store it in the lock file (what if one of the becomes unavailable during suspends?Possible?)
+- error handling when hibernate fails from OS's side (not critical now as lockfile is removed then,but data loss after battery drain to death)
 ---
 - Zramswap has caused page allocation issues during hibernate in systemd systems.
 ---
