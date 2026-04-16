@@ -4,7 +4,7 @@ set -euo pipefail #exit on first error(safety)
 
 #attempting a function for better manual user suspend handling
 s3_suspend(){
-systemctl start batterymonitor.service 
+systemctl start batterymonitor.timer 
 exit 0
 }
 
@@ -26,7 +26,8 @@ SAFETY_PERCENT=10 #when reaches this % (if ocassionally), then the script calls 
 LOCK=/tmp/sulockfile #should be a tmpfs (cleared on reboot not s4/s3 states..!)
 
 GAINED_ROOT_VIA_PKEXEC=false # Check if we got here via pkexec (PKEXEC_UID is set by pkexec)
-if [ -n "$PKEXEC_UID" ]; then
+#if [ -n "$PKEXEC_UID" ]; then
+if [ -n "${PKEXEC_UID+set}" ]; then #for not exiting due to set -euo
     GAINED_ROOT_VIA_PKEXEC=true
 fi
 
