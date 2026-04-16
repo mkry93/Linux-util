@@ -4,7 +4,7 @@ set -euo pipefail #exit on first error(safety)
 
 #attempting a function for better manual user suspend handling
 s3_suspend(){
-systemctl start batterymonitor.timer 
+systemctl restart batterymonitor.timer 
 exit 0
 }
 
