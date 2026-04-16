@@ -4,7 +4,7 @@ set -euo pipefail #exit on first error(safety)
 
 #attempting a function for better manual user suspend handling
 s3_suspend(){
-systemctl start batteryhybrid.service 
+systemctl start batterymonitor.service 
 exit 0
 }
 
@@ -37,7 +37,6 @@ if [ "$GAINED_ROOT_VIA_PKEXEC" = true ]; then
         touch "$LOCK"
         echo "No lockfile detected, wrote lock, suspend"
 		s3_suspend
-		exit 0
     else
         echo "Lockfile exists... continue suspend" #for logging purpose
 		s3_suspend
