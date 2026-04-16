@@ -20,6 +20,7 @@ same delay to be reused (maybe upower quirk )
 - an indication that the suspend loop was completed and battery has reached critical levels and hibernated (for info only no utility use as of now) 
 - touch the LOCK file with random names(using mktemp?)(can break timer detection after delay)
 - need checking for deps all time or store it in the lock file (what if one of the becomes unavailable during suspends?Possible?)
+- logging attempts in service file is failing as its rewritten every run (need a better solution logging execution of script. [add logging in script?])
 - error handling when hibernate fails from OS's side (not critical now as lockfile is removed then,but data loss after battery drain to death)
 ---
 - Zramswap has caused page allocation issues during hibernate in systemd systems.
