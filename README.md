@@ -1,7 +1,7 @@
 # Idea
 
 make a way to suspend when system on battery and auto awake with calculated delay based on remaining battery to check batery level and then hibernate to save progress 
-at a critical range between 10-5%.
+at a user defined range beteween a-b%.
 
 ##  additional,script works now
 
@@ -72,8 +72,8 @@ so the first 5 sec need to terminate the timer job or increase timer to 30 sec
 ---
 - ~~Using pkexec - each wrapper call asks for a polkit auth (enter password dialogue) which elevates to root one run. (Current method,Comparitively secure).~~
 
-**6**.An almost 12 hour suspend starting at approx 95% charge test has failed with failure to countinue suspend check due to early clearence of lock file 
-potential cause was found in battery_check and rectified but the timer method may also prove to be unreliable. (need testing)
+**6**.An almost 12 hour suspend starting at approx 95% charge test has failed with failure to countinue suspend due to early clearence of lock file 
+potential cause was found in battery_check and rectified but the timer method may also prove to be unreliable. (need testing).
 
 **7**.~~How to deal(cancel suspend) between the wrapper timeout till the timer catches up and starts the s3_detect loop.~~
 
