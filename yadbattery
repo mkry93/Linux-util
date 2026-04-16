@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail #exit on first error(safety)
+
 # Check if running as root
 if [ "$(id -u)" -ne 0 ]; then # Not root - attempt privilege escalation via pkexec
 command -v pkexec >/dev/null 2>&1 || { echo "pkexec is required"; exit 1; } #no pkexec script exits
@@ -181,6 +183,10 @@ local secafterdelay=$((secnow + delay))
 battery_action #check before resuspend
 
 [[ "$delay" -ne 0 ]] && rtcwake -m mem -s $delay #execution stops here and countinues after wake in a suspend cycle
+
+
+# a fix needed here to remove lock(if manual) before timer catches it when triggered by user during resume, to prevent a race auto resuspend
+
 
 local secafterwake=$(date +%s) #tested to be a good solution despite time basing when scaled to the long delay seconds (and will set the fallback atleast 60 sec)
 local tolsecafterwake=$((secafterwake + 2)) #tolerance time 
