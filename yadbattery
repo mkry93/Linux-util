@@ -14,7 +14,7 @@ fi
 #solid set values
 LOW=15 #currently effectively hibernates at low,sets delay=0 to battery_action remove lock and hibernate
 WARN=20
-SAFETY_PERCENT=10 #when reaches this % somtimes, then the script calls immediate hibernation
+SAFETY_PERCENT=10 #when reaches this % (if ocassionally), then the script calls immediate hibernation
 LOCK=/tmp/sulockfile #should be a tmpfs (cleared on reboot not s4/s3 states..!)
 
 GAINED_ROOT_VIA_PKEXEC=false # Check if we got here via pkexec (PKEXEC_UID is set by pkexec)
@@ -178,7 +178,7 @@ local delay=$(calculate_delay $percent)
 local secnow=$(date +%s)
 local secafterdelay=$((secnow + delay))
 
-battery_action #check before resuspend //remove sudo if kept for testing ...!
+battery_action #check before resuspend
 
 [[ "$delay" -ne 0 ]] && rtcwake -m mem -s $delay #execution stops here and countinues after wake in a suspend cycle
 
@@ -188,9 +188,11 @@ local tolsecafterwake=$((secafterwake + 2)) #tolerance time
 if [ $secafterdelay -lt $tolsecafterwake ]; then
 [[ "$delay" -ne 0 ]] && echo "RTC wake"
 [[ "$delay" -eq 0 ]] && exit 0
+
 #s3_detect looping till manual delay
+
 else
-echo "manual wake" &&  rm -f $LOCK && echo "s3 wakeup done,lockfile cleared"  #remove sudo if kept for testing ...!
+echo "manual wake" &&  rm -f $LOCK && echo "s3 wakeup done,lockfile cleared" 
 exit 0 #since timer will run it again and can comfortably quit here
 fi
 done
@@ -207,10 +209,9 @@ percent=$LEVEL
 #-----------
 
 
-#logic start
-#detect if the lockfile is present in a tmpfs created using a suspend wrapper and execute (need to clear lockfile later)
-#important decide the initial timer or add error handling to prevent suspend loop 
-if [[ -f $LOCK ]]; then #potential error :if suspend was woken up before the helper wrapper completed its first wake therell be a loop (fix needed)
+#logic start - detect if the lockfile is present
+
+if [[ -f $LOCK ]]; then
 s3_detect
 fi
 
