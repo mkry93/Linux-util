@@ -2,6 +2,12 @@
 
 set -euo pipefail #exit on first error(safety)
 
+#attempting a function for better manual user suspend handling
+s3_suspend(){
+systemctl start batteryhybrid.service 
+exit 0
+}
+
 # Check if running as root
 if [ "$(id -u)" -ne 0 ]; then # Not root - attempt privilege escalation via pkexec
 command -v pkexec >/dev/null 2>&1 || { echo "pkexec is required"; exit 1; } #no pkexec script exits
@@ -29,9 +35,12 @@ fi
 if [ "$GAINED_ROOT_VIA_PKEXEC" = true ]; then
     if [ ! -f "$LOCK" ]; then
         touch "$LOCK"
-        echo "No lockfile detected, wrote lock"
+        echo "No lockfile detected, wrote lock, suspend"
+		s3_suspend
+		exit 0
     else
-        echo "Lockfile exists... continue suspend"
+        echo "Lockfile exists... continue suspend" #for logging purpose
+		s3_suspend
     fi
 fi
 
@@ -204,18 +213,18 @@ fi
 done
 }
 
+#------------------
+
+
+#execution start
+
 
 get_battery_info #running to get percent and subsequent delay repeated with timer
 percent=$LEVEL
 	if [[ -z "$percent" ]] || ! [[ "$percent" =~ ^[0-9]+$ ]]; then
             echo "Error: Could not read battery percentage."
             exit 1
-    fi    
-
-#-----------
-
-
-#logic start - detect if the lockfile is present
+    fi
 
 if [[ -f $LOCK ]]; then
 s3_detect
