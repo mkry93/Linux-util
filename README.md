@@ -3,12 +3,7 @@
 make a way to suspend when system on battery and auto awake with calculated delay based on remaining battery to check batery level and then hibernate to save progress 
 at a critical range between 10-5%.
 
-## Whats done 
-
-The delay calculation ,battery state and level detection ,root gui dialogue display resolved, 
-yad dialogue and countdown,to detect whether it was a manual or rtcwake , to run a repeated check when system wakes from the suspend.
-
-##  Whats left (additional,script works now)
+##  additional,script works now
 
 - Check Big(O) worst case time. should not exceed 15sec +- 2(old calculation but still a good/safe target) for timer service and script avoid overlap race conditions
 - considering usage of a fifo or other make lock functions though seems unnecessary currently.
@@ -29,6 +24,7 @@ same delay to be reused (maybe upower quirk )
 ---
 - Zramswap has caused page allocation issues during hibernate in systemd systems.
 ---
+
 ## Usage
 
 - copy the main script to the location specified on the systemd service file (current timer method [systemd-timer])
