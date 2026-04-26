@@ -82,4 +82,4 @@ potential cause was found in battery_check and rectified but the timer method ma
 
 **8**.Race Condition where one timer triggered script runs the yad dialogue then the timer triggers another dialogue after interval.(not observed just a possibility to mitigate)(add a pid check?)
 
-**9**.Detected an auto resuspend when woken from a manual suspend triggered by the main script (need triage) (can be time sensitive logic issue , or manual suspend using main script doesnt clear lockfile on wake)
+**9**.~~Detected an auto resuspend when woken from a manual suspend triggered by the main script (need triage) (can be time sensitive logic issue , or manual suspend using main script doesnt clear lockfile on wake)~~
