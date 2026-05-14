@@ -23,6 +23,7 @@ same delay to be reused (maybe upower quirk )
 - logging attempts in service file is failing as its rewritten every run (need a better solution logging execution of script. [add logging in script?])
 - Try Remove bc for checks heavy dependency by multiplying it out of decimals for comaprisons .
 - Remove hardcoded BAT path for upower with dynamic one found earlier and remove perl regex in grep (-p) as some systems lack it.
+- Add a installation script ,also as a test helper  
 - error handling when hibernate fails from OS's side (not critical now as lockfile is removed then,but data loss after battery drain to death)
 ---
 - Zramswap has caused page allocation issues during hibernate in systemd systems.
