@@ -18,6 +18,7 @@ same delay to be reused (maybe upower quirk )
 - remove systemd suspend calls with rtcwake commands if needed
 - find any interference with long running processes or hanged situations (bigger delay)
 - an indication that the suspend loop was completed and battery has reached critical levels and hibernated (for info only no utility use as of now) 
+- check flock for race conditions by cooperating writers
 - touch the LOCK file with random names(using mktemp?)(can break timer detection after delay)
 - need checking for deps all time or store it in the lock file (what if one of the becomes unavailable during suspends?Possible?)
 - logging attempts in service file is failing as its rewritten every run (need a better solution logging execution of script. [add logging in script?])
